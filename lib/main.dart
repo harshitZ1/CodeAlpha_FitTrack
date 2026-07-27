@@ -1,7 +1,22 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'app.dart';
+import 'package:provider/provider.dart';
 
-void main() {
+import 'firebase_options.dart';
+import 'app.dart';
+import 'theme/theme_provider.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const FitnessTrackerApp());
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const FitnessTrackerApp(),
+    ),
+  );
 }
