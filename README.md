@@ -1,7 +1,6 @@
 # 🏋️ FitTrack
 
-A modern Flutter-based Fitness Tracker application that helps users manage workouts, monitor fitness progress, calculate BMI, and achieve daily fitness goals.
-
+A modern Flutter Fitness Tracker app with Firebase Authentication, SQLite, BMI Calculator, Goals, Workout Analytics, Dark Mode, and Beautiful Material UI.
 ---
 
 ## 📱 Features
