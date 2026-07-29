@@ -1,109 +1,185 @@
-import 'package:flutter/material.dart';
-import '../models/workout.dart';
-import '../services/database_service.dart';
-import '../widgets/summary_card.dart';
-import 'add_workout_screen.dart';
-import '../widgets/workout_chart.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
-import '../services/profile_service.dart';
+
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../services/step_service.dart';
+
+import '../models/workout.dart';
+import '../services/database_service.dart';
 import '../services/goal_service.dart';
+import '../services/profile_service.dart';
+import '../services/step_service.dart';
+import '../widgets/summary_card.dart';
+import '../widgets/workout_chart.dart';
+import 'add_workout_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-  
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // ===========================
+  // Data
+  // ===========================
+
   List<Workout> workouts = [];
-  
 
- String? _imagePath;
- double? _bmi;
- int _steps = 0;
- final GoalService goalService = GoalService();
+  String? _imagePath;
+  double? _bmi;
+  int _steps = 0;
 
-String goalWeight = "";
-String goalSteps = "";
-String goalCalories = "";
-String goalWater = "";
+  final GoalService goalService = GoalService();
+  final StepService _stepService = StepService();
 
-final StepService _stepService = StepService();
+  Stream<StepCount>? _stepStream;
 
-Stream<StepCount>? _stepStream;
+  String goalWeight = "";
+  String goalSteps = "";
+  String goalCalories = "";
+  String goalWater = "";
 
-@override
-void initState() {
-  super.initState();
-  loadWorkouts();
-  _loadProfileImage();
-    _loadBMI();
+  // ===========================
+  // Search & Filter (NEW)
+  // ===========================
+
+  final TextEditingController searchController =
+      TextEditingController();
+
+  String searchText = "";
+
+  // ===========================
+  // Daily Quotes (NEW)
+  // ===========================
+
+  final List<String> quotes = [
+    "Every workout counts 💪",
+    "Stay consistent.",
+    "Small progress is still progress.",
+    "Push yourself today.",
+    "Fitness is a lifestyle.",
+    "One more rep!",
+    "Never skip your goals.",
+    "Discipline beats motivation.",
+  ];
+
+  String get todayQuote {
+    final day = DateTime.now().day;
+    return quotes[day % quotes.length];
+  }
+
+  // ===========================
+  // Init
+  // ===========================
+
+  @override
+  void initState() {
+    super.initState();
+
+    loadWorkouts();
     loadGoals();
-   // _initStepCounter();//
-}
-String getGreeting() {
-  final hour = DateTime.now().hour;
+    _loadProfileImage();
+    _loadBMI();
 
-  if (hour < 12) {
-    return "Good Morning";
-  } else if (hour < 17) {
-    return "Good Afternoon";
-  } else {
-    return "Good Evening";
-  }
-}
-Future<void> _initStepCounter() async {
-  var status = await Permission.activityRecognition.request();
-
-  if (!status.isGranted) {
-    return;
+    // Uncomment when step counter is enabled
+    // _initStepCounter();
   }
 
-  _stepStream = _stepService.stepStream;
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
-  _stepStream!.listen((event) {
+  // ===========================
+  // Greeting
+  // ===========================
+
+  String getGreeting() {
+    final hour = DateTime.now().hour;
+
+    if (hour < 12) {
+      return "Good Morning";
+    } else if (hour < 17) {
+      return "Good Afternoon";
+    } else {
+      return "Good Evening";
+    }
+  }
+
+  // ===========================
+  // Step Counter
+  // ===========================
+
+  Future<void> _initStepCounter() async {
+    final status =
+        await Permission.activityRecognition.request();
+
+    if (!status.isGranted) return;
+
+    _stepStream = _stepService.stepStream;
+
+    _stepStream?.listen((event) {
+      if (!mounted) return;
+
+      setState(() {
+        _steps = event.steps;
+      });
+    });
+  }
+
+  // ===========================
+  // Profile
+  // ===========================
+
+  Future<void> _loadProfileImage() async {
+    _imagePath = await ProfileService.getProfileImage();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadBMI() async {
+    _bmi = await ProfileService.getBMI();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // ===========================
+  // Goals
+  // ===========================
+
+  Future<void> loadGoals() async {
+    final goals = await goalService.loadGoals();
+
     if (!mounted) return;
 
     setState(() {
-      _steps = event.steps;
+      goalWeight = goals["weight"]!;
+      goalSteps = goals["steps"]!;
+      goalCalories = goals["calories"]!;
+      goalWater = goals["water"]!;
     });
-  });
-}
-
-Future<void> _loadProfileImage() async {
-_imagePath = await ProfileService.getProfileImage();
-  if (mounted) {
-    setState(() {});
   }
-}
 
-Future<void> _loadBMI() async {
-  _bmi = await ProfileService.getBMI();
+  // ===========================
+  // Workouts
+  // ===========================
 
-  if (mounted) {
-    setState(() {});
-  }
-}
   Future<void> loadWorkouts() async {
     workouts = await DatabaseService.instance.getWorkouts();
-    setState(() {});
-  }
-  Future<void> loadGoals() async {
-  final goals = await goalService.loadGoals();
 
-  setState(() {
-    goalWeight = goals["weight"]!;
-    goalSteps = goals["steps"]!;
-    goalCalories = goals["calories"]!;
-    goalWater = goals["water"]!;
-  });
-}
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   int get totalCalories =>
       workouts.fold(0, (sum, item) => sum + item.calories);
@@ -111,266 +187,453 @@ Future<void> _loadBMI() async {
   int get totalDuration =>
       workouts.fold(0, (sum, item) => sum + item.duration);
 
+  List<Workout> get filteredWorkouts {
+    if (searchText.isEmpty) return workouts;
+
+    return workouts.where((workout) {
+      return workout.name
+          .toLowerCase()
+          .contains(searchText.toLowerCase());
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      appBar: AppBar(
-  title: const Text(
-  'FitTrack',
-  style: TextStyle(
-    fontWeight: FontWeight.bold,
-    letterSpacing: 1,
-  ),
-),
-  centerTitle: true,
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.logout),
-      onPressed: () async {
-        await FirebaseAuth.instance.signOut();
-      },
+  appBar: AppBar(
+    centerTitle: true,
+    elevation: 0,
+    title: const Text(
+      "FitTrack",
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1,
+      ),
     ),
-  ],
-),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-           padding: const EdgeInsets.only(bottom: 100),
-          children: [
-          Container(
-  padding: const EdgeInsets.all(20),
-  decoration: BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        Theme.of(context).colorScheme.primary,
-        Colors.green.shade600,
-      ],
-    ),
-    borderRadius: BorderRadius.circular(24),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.15),
-        blurRadius: 12,
-        offset: const Offset(0, 6),
+    actions: [
+      IconButton(
+        icon: const Icon(Icons.logout),
+        onPressed: () async {
+          await FirebaseAuth.instance.signOut();
+        },
       ),
     ],
   ),
-  child: Row(
-    children: [
-      CircleAvatar(
-        radius: 30,
-        backgroundColor: Colors.white,
-        backgroundImage:
-            _imagePath != null ? FileImage(File(_imagePath!)) : null,
-        child: _imagePath == null
-            ? const Icon(Icons.person, size: 30)
-            : null,
-      ),
 
-      const SizedBox(width: 18),
+  body: RefreshIndicator(
+    onRefresh: () async {
+      await loadWorkouts();
+      await loadGoals();
+      await _loadProfileImage();
+      await _loadBMI();
+    },
 
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              getGreeting(),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 15,
-              ),
-            ),
+    child: ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      children: [
 
-            const SizedBox(height: 4),
+        //=========================
+        // PREMIUM HEADER
+        //=========================
 
-            Text(
-              user?.displayName ?? "User",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            const Text(
-              "Stay consistent. Every workout counts. 💪",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  ),
-),
-            const SizedBox(height: 25),
-
-            Row(
-              children: [
-                Expanded(
-                  child: SummaryCard(
-                    title: "Today's Workouts",
-                    value: workouts.length.toString(),
-                    icon: Icons.fitness_center,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SummaryCard(
-                    title: "Calories",
-                    value: "$totalCalories kcal",
-                    icon: Icons.local_fire_department,
-                  ),
-                ),
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Colors.green.shade600,
               ],
             ),
+          ),
 
-          const SizedBox(height: 16),
+          child: Row(
+            children: [
 
-Row(
-  children: [
-    Expanded(
-      child: SummaryCard(
-        title: "Duration",
-        value: "$totalDuration min",
-        icon: Icons.timer,
-      ),
-    ),
-    const SizedBox(width: 12),
-    
-    Expanded(
-      child: SummaryCard(
-        title: "BMI",
-        value: _bmi == null
-            ? "--"
-            : _bmi!.toStringAsFixed(2),
-        icon: Icons.monitor_weight,
-      ),
-    ),
-  ],
-),
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: Colors.white,
+                backgroundImage: _imagePath != null
+                    ? FileImage(File(_imagePath!))
+                    : null,
+                child: _imagePath == null
+                    ? const Icon(Icons.person,size:30)
+                    : null,
+              ),
 
-const SizedBox(height: 16),
+              const SizedBox(width:18),
 
-Row(
-  children: [
-    Expanded(
-      child: SummaryCard(
-        title: "Steps",
-        value: _steps.toString(),
-        icon: Icons.directions_walk,
-      ),
-    ),
-  ],
-),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
 
-const SizedBox(height: 20),
+                    Text(
+                      getGreeting(),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 15,
+                      ),
+                    ),
 
-Card(
-  elevation: 4,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(18),
-  ),
-  child: Padding(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-       const Row(
-  children: [
-    Icon(
-      Icons.track_changes,
-      color: Colors.green,
-      size: 28,
-    ),
-    SizedBox(width: 10),
-    Text(
-      "My Goals",
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ],
-),
+                    const SizedBox(height:4),
 
-        const SizedBox(height: 16),
+                    Text(
+                      DateFormat("EEEE, dd MMM yyyy")
+                          .format(DateTime.now()),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                      ),
+                    ),
 
-       ListTile(
-  contentPadding: EdgeInsets.zero,
-  leading: const Icon(Icons.monitor_weight),
-  title: const Text("Target Weight"),
-  trailing: Text(
-    "${goalWeight.isEmpty ? '--' : goalWeight} kg",
-    style: const TextStyle(fontWeight: FontWeight.bold),
-  ),
-),
+                    const SizedBox(height:6),
 
-const Divider(),
+                    Text(
+                      user?.displayName ?? "User",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 27,
+                      ),
+                    ),
 
-ListTile(
-  contentPadding: EdgeInsets.zero,
-  leading: const Icon(Icons.directions_walk),
-  title: const Text("Daily Steps"),
-  trailing: Text(
-    goalSteps.isEmpty ? "--" : goalSteps,
-    style: const TextStyle(fontWeight: FontWeight.bold),
-  ),
-),
+                    const SizedBox(height:8),
 
-const Divider(),
+                    Text(
+                      todayQuote,
+                      style: const TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
 
-ListTile(
-  contentPadding: EdgeInsets.zero,
-  leading: const Icon(Icons.local_fire_department),
-  title: const Text("Calories Goal"),
-  trailing: Text(
-    "${goalCalories.isEmpty ? '--' : goalCalories} kcal",
-    style: const TextStyle(fontWeight: FontWeight.bold),
-  ),
-),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
 
-const Divider(),
+        const SizedBox(height:22),
 
-ListTile(
-  contentPadding: EdgeInsets.zero,
-  leading: const Icon(Icons.water_drop),
-  title: const Text("Water Goal"),
-  trailing: Text(
-    "${goalWater.isEmpty ? '--' : goalWater} L",
-    style: const TextStyle(fontWeight: FontWeight.bold),
-  ),
-),
-      ],
-    ),
-  ),
-),
-WorkoutChart(
-  calories: totalCalories,
-  duration: totalDuration,
-),
+        //=========================
+        // SEARCH BAR
+        //=========================
 
-            const SizedBox(height: 30),
+        TextField(
+          controller: searchController,
+          onChanged: (value) {
+            setState(() {
+              searchText = value;
+            });
+          },
+          decoration: InputDecoration(
+            hintText: "Search workout...",
+            prefixIcon: const Icon(Icons.search),
+            border: OutlineInputBorder(
+              borderRadius:
+                  BorderRadius.circular(16),
+            ),
+          ),
+        ),
 
-            const Text(
-              "Today's Activity",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+        const SizedBox(height:20),
+
+        //=========================
+        // SUMMARY
+        //=========================
+
+        Row(
+          children: [
+
+            Expanded(
+              child: SummaryCard(
+                title: "Today's Workouts",
+                value: workouts.length.toString(),
+                icon: Icons.fitness_center,
               ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(width:12),
 
-           workouts.isEmpty
+            Expanded(
+              child: SummaryCard(
+                title: "Calories",
+                value: "$totalCalories kcal",
+                icon: Icons.local_fire_department,
+              ),
+            ),
+
+          ],
+        ),
+
+        const SizedBox(height:16),
+
+        Row(
+          children: [
+
+            Expanded(
+              child: SummaryCard(
+                title: "Duration",
+                value: "$totalDuration min",
+                icon: Icons.timer,
+              ),
+            ),
+
+            const SizedBox(width:12),
+
+            Expanded(
+              child: SummaryCard(
+                title: "BMI",
+                value: _bmi == null
+                    ? "--"
+                    : _bmi!.toStringAsFixed(2),
+                icon: Icons.monitor_weight,
+              ),
+            ),
+
+          ],
+        ),
+
+        const SizedBox(height:16),
+
+        Row(
+          children: [
+
+            Expanded(
+              child: SummaryCard(
+                title: "Steps",
+                value: _steps.toString(),
+                icon: Icons.directions_walk,
+              ),
+            ),
+
+          ],
+        ),
+
+        const SizedBox(height:24),
+                //=========================
+        // GOALS CARD
+        //=========================
+
+        Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.track_changes,
+                      color: Colors.green,
+                      size: 28,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      "My Goals",
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 18),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.monitor_weight),
+                  title: const Text("Target Weight"),
+                  trailing: Text(
+                    goalWeight.isEmpty
+                        ? "--"
+                        : "$goalWeight kg",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                const Divider(),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.directions_walk),
+                  title: const Text("Daily Steps"),
+                  trailing: Text(
+                    goalSteps.isEmpty
+                        ? "--"
+                        : goalSteps,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                const Divider(),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.local_fire_department),
+                  title: const Text("Calories Goal"),
+                  trailing: Text(
+                    goalCalories.isEmpty
+                        ? "--"
+                        : "$goalCalories kcal",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                const Divider(),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.water_drop),
+                  title: const Text("Water Goal"),
+                  trailing: Text(
+                    goalWater.isEmpty
+                        ? "--"
+                        : "$goalWater L",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 22),
+
+        //=========================
+        // WEEKLY PROGRESS (NEW)
+        //=========================
+
+        Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                const Text(
+                  "Weekly Progress",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                LinearProgressIndicator(
+                  value: workouts.isEmpty
+                      ? 0
+                      : (workouts.length / 7).clamp(0.0, 1.0),
+                  minHeight: 10,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+
+                const SizedBox(height: 18),
+
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                  children: [
+
+                    Column(
+                      children: [
+                        Text(
+                          workouts.length.toString(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text("Workouts"),
+                      ],
+                    ),
+
+                    Column(
+                      children: [
+                        Text(
+                          totalCalories.toString(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text("Calories"),
+                      ],
+                    ),
+
+                    Column(
+                      children: [
+                        Text(
+                          totalDuration.toString(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text("Minutes"),
+                      ],
+                    ),
+
+                  ],
+                ),
+
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        //=========================
+        // CHART
+        //=========================
+
+        WorkoutChart(
+          calories: totalCalories,
+          duration: totalDuration,
+        ),
+
+        const SizedBox(height: 30),
+
+        const Text(
+          "Today's Activity",
+          style: TextStyle(
+            fontSize: 23,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 18),
+        //=========================
+// WORKOUT LIST
+//=========================
+
+filteredWorkouts.isEmpty
     ? Card(
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -383,16 +646,17 @@ WorkoutChart(
           ),
           child: Column(
             children: [
+
               Icon(
                 Icons.fitness_center,
-                size: 70,
+                size: 75,
                 color: Theme.of(context).colorScheme.primary,
               ),
 
               const SizedBox(height: 18),
 
               const Text(
-                "No Workouts Yet",
+                "No Workouts Found",
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -402,22 +666,26 @@ WorkoutChart(
               const SizedBox(height: 10),
 
               Text(
-                "Start your fitness journey by adding your first workout.",
+                searchText.isEmpty
+                    ? "Start your fitness journey by adding your first workout."
+                    : "No workout matches your search.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey.shade600,
-                  fontSize: 15,
                 ),
               ),
 
               const SizedBox(height: 25),
 
               ElevatedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text("Add Workout"),
                 onPressed: () async {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const AddWorkoutScreen(),
+                      builder: (_) =>
+                          const AddWorkoutScreen(),
                     ),
                   );
 
@@ -425,125 +693,198 @@ WorkoutChart(
                     loadWorkouts();
                   }
                 },
-                icon: const Icon(Icons.add),
-                label: const Text("Add Workout"),
               ),
+
             ],
           ),
         ),
       )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: workouts.length,
-                    itemBuilder: (context, index) {
-  final workout = workouts[index];
 
-  return Card(
-  elevation: 2,
-  margin: const EdgeInsets.only(bottom: 12),
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(18),
-  ),
-  child: ListTile(
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 16,
-      vertical: 10,
-    ),
+    : ListView.builder(
+        shrinkWrap: true,
+        physics:
+            const NeverScrollableScrollPhysics(),
+        itemCount: filteredWorkouts.length,
 
-    onTap: () async {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AddWorkoutScreen(
-            workout: workout,
-          ),
-        ),
-      );
+        itemBuilder: (context, index) {
 
-      if (result == true) {
-        await loadWorkouts();
-      }
-    },
+          final workout =
+              filteredWorkouts[index];
 
-    leading: Container(
-      height: 50,
-      width: 50,
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .primary
-            .withOpacity(0.12),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        Icons.fitness_center,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    ),
+        return Dismissible(
+            key: ValueKey(workout.id),
 
-    title: Text(
-      workout.name,
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-      ),
-    ),
+            background: Container(
+              alignment: Alignment.centerLeft,
+              padding:
+                  const EdgeInsets.only(left: 20),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius:
+                    BorderRadius.circular(18),
+              ),
 
-    subtitle: Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(
-        "${workout.duration} min • ${workout.calories} kcal",
-      ),
-    ),
-
-    trailing: IconButton(
-      icon: const Icon(
-        Icons.delete_outline,
-        color: Colors.red,
-      ),
-      onPressed: () async {
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Delete Workout"),
-            content: const Text(
-              "Are you sure you want to delete this workout?",
+              child: const Icon(
+                Icons.edit,
+                color: Colors.white,
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text("Cancel"),
+
+            secondaryBackground: Container(
+              alignment: Alignment.centerRight,
+              padding:
+                  const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius:
+                    BorderRadius.circular(18),
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text("Delete"),
+              child: const Icon(
+                Icons.delete,
+                color: Colors.white,
               ),
-            ],
-          ),
-        );
+            ),
 
-        if (confirm != true) return;
+            confirmDismiss: (direction) async {
 
-        await DatabaseService.instance.deleteWorkout(workout.id!);
-        await loadWorkouts();
+              if (direction ==
+                  DismissDirection.startToEnd) {
 
-        if (!mounted) return;
+                final result =
+                    await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        AddWorkoutScreen(
+                      workout: workout,
+                    ),
+                  ),
+                );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Workout deleted successfully"),
-          ),
-        );
-      },
+                if (result == true) {
+                  loadWorkouts();
+                }
+
+                return false;
+              }
+
+              return await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title:
+                          const Text("Delete Workout"),
+                      content: const Text(
+                        "Do you really want to delete this workout?",
+                      ),
+                      actions: [
+
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.pop(
+                                  context, false),
+                          child:
+                              const Text("Cancel"),
+                        ),
+
+                        ElevatedButton(
+                          onPressed: () =>
+                              Navigator.pop(
+                                  context, true),
+                          child:
+                              const Text("Delete"),
+                        ),
+
+                      ],
+                    ),
+                  ) ??
+                  false;
+            },
+            onDismissed: (_) async {
+  await DatabaseService.instance.deleteWorkout(workout.id!);
+
+  await loadWorkouts();
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      backgroundColor: Colors.green.shade600,
+      content: const Text(
+        "Workout deleted successfully",
+      ),
+    ),
+  );
+},
+
+            child: Card(
+              elevation: 2,
+              margin:
+                  const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(18),
+              ),
+
+              child: ListTile(
+
+                onTap: () async {
+
+                  final result =
+                      await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AddWorkoutScreen(
+                        workout: workout,
+                      ),
+                    ),
+                  );
+
+                  if (result == true) {
+                    loadWorkouts();
+                  }
+                },
+
+                leading: CircleAvatar(
+                  child: const Icon(
+                    Icons.fitness_center,
+                  ),
+                ),
+
+                title: Text(
+                  workout.name,
+                  style: const TextStyle(
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                subtitle: Text(
+                  "${workout.duration} min • ${workout.calories} kcal",
+                ),
+
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 18,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+              //=========================
+        // DELETE AFTER SWIPE
+        //=========================
+
+       
+
+          ],
     ),
   ),
-);
-                    }
-                ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+
+floatingActionButton: FloatingActionButton.extended(
   onPressed: () async {
     final result = await Navigator.push(
       context,
@@ -553,17 +894,18 @@ WorkoutChart(
     );
 
     if (result == true) {
-      loadWorkouts();
+      await loadWorkouts();
     }
   },
   icon: const Icon(Icons.add),
   label: const Text(
     "Add Workout",
     style: TextStyle(
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.bold,
     ),
   ),
 ),
-    );
-  }
+
+);
 }
+} 
