@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'constants/app_colors.dart';
 import 'screens/auth_gate.dart';
 import 'theme/theme_provider.dart';
+import 'screens/splash_screen.dart';
 
 class FitnessTrackerApp extends StatelessWidget {
   const FitnessTrackerApp({super.key});
@@ -35,7 +36,7 @@ theme: ThemeData(
         colorSchemeSeed: AppColors.primary,
       ),
 
-      home: const AuthGate(),
+     home: const SplashScreen(),
     );
   }
 }

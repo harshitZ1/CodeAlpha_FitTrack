@@ -47,6 +47,17 @@ void initState() {
     loadGoals();
    // _initStepCounter();//
 }
+String getGreeting() {
+  final hour = DateTime.now().hour;
+
+  if (hour < 12) {
+    return "Good Morning";
+  } else if (hour < 17) {
+    return "Good Afternoon";
+  } else {
+    return "Good Evening";
+  }
+}
 Future<void> _initStepCounter() async {
   var status = await Permission.activityRecognition.request();
 
@@ -105,7 +116,13 @@ Future<void> _loadBMI() async {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
-  title: const Text("Fitness Tracker"),
+  title: const Text(
+  'FitTrack',
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1,
+  ),
+),
   centerTitle: true,
   actions: [
     IconButton(
@@ -122,48 +139,69 @@ Future<void> _loadBMI() async {
         child: ListView(
            padding: const EdgeInsets.only(bottom: 100),
           children: [
-           Container(
+          Container(
   padding: const EdgeInsets.all(20),
   decoration: BoxDecoration(
     gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
       colors: [
         Theme.of(context).colorScheme.primary,
-        Colors.green,
+        Colors.green.shade600,
       ],
     ),
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: BorderRadius.circular(24),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.15),
+        blurRadius: 12,
+        offset: const Offset(0, 6),
+      ),
+    ],
   ),
   child: Row(
     children: [
       CircleAvatar(
-  radius: 25,
-  backgroundImage:
-      _imagePath != null ? FileImage(File(_imagePath!)) : null,
-  child: _imagePath == null
-      ? const Icon(Icons.person)
-      : null,
-),
-      SizedBox(width: 15),
+        radius: 30,
+        backgroundColor: Colors.white,
+        backgroundImage:
+            _imagePath != null ? FileImage(File(_imagePath!)) : null,
+        child: _imagePath == null
+            ? const Icon(Icons.person, size: 30)
+            : null,
+      ),
+
+      const SizedBox(width: 18),
 
       Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-           Text(
-  "Welcome ${user?.displayName ?? 'User'} 👋",
-  style: const TextStyle(
-    color: Colors.white,
-    fontSize: 22,
-    fontWeight: FontWeight.bold,
-  ),
-),
+            Text(
+              getGreeting(),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 15,
+              ),
+            ),
 
-            SizedBox(height: 6),
+            const SizedBox(height: 4),
 
             Text(
-              "Let's crush today's workout! 💪",
+              user?.displayName ?? "User",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            const Text(
+              "Stay consistent. Every workout counts. 💪",
               style: TextStyle(
-                color: Colors.white70,
+                color: Colors.white,
                 fontSize: 15,
               ),
             ),
@@ -173,7 +211,6 @@ Future<void> _loadBMI() async {
     ],
   ),
 ),
-
             const SizedBox(height: 25),
 
             Row(
@@ -208,6 +245,7 @@ Row(
       ),
     ),
     const SizedBox(width: 12),
+    
     Expanded(
       child: SummaryCard(
         title: "BMI",
@@ -332,18 +370,68 @@ WorkoutChart(
 
             const SizedBox(height: 15),
 
-            workouts.isEmpty
-                ? const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Center(
-                        child: Text(
-                          "No workouts added yet.",
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
+           workouts.isEmpty
+    ? Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: 35,
+            horizontal: 20,
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.fitness_center,
+                size: 70,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+
+              const SizedBox(height: 18),
+
+              const Text(
+                "No Workouts Yet",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                "Start your fitness journey by adding your first workout.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 15,
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AddWorkoutScreen(),
                     ),
-                  )
+                  );
+
+                  if (result == true) {
+                    loadWorkouts();
+                  }
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("Add Workout"),
+              ),
+            ],
+          ),
+        ),
+      )
                 : ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -352,69 +440,130 @@ WorkoutChart(
   final workout = workouts[index];
 
   return Card(
-    child: ListTile(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AddWorkoutScreen(
-              workout: workout,
+  elevation: 2,
+  margin: const EdgeInsets.only(bottom: 12),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(18),
+  ),
+  child: ListTile(
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: 10,
+    ),
+
+    onTap: () async {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AddWorkoutScreen(
+            workout: workout,
+          ),
+        ),
+      );
+
+      if (result == true) {
+        await loadWorkouts();
+      }
+    },
+
+    leading: Container(
+      height: 50,
+      width: 50,
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .primary
+            .withOpacity(0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.fitness_center,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+
+    title: Text(
+      workout.name,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+
+    subtitle: Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        "${workout.duration} min • ${workout.calories} kcal",
+      ),
+    ),
+
+    trailing: IconButton(
+      icon: const Icon(
+        Icons.delete_outline,
+        color: Colors.red,
+      ),
+      onPressed: () async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Delete Workout"),
+            content: const Text(
+              "Are you sure you want to delete this workout?",
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Delete"),
+              ),
+            ],
           ),
         );
 
-        if (result == true) {
-          await loadWorkouts();
-        }
+        if (confirm != true) return;
+
+        await DatabaseService.instance.deleteWorkout(workout.id!);
+        await loadWorkouts();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Workout deleted successfully"),
+          ),
+        );
       },
-      leading: const Icon(Icons.fitness_center),
-      title: Text(workout.name),
-      subtitle: Text(
-        "${workout.duration} min • ${workout.calories} kcal",
-      ),
-      trailing: IconButton(
-        icon: const Icon(
-          Icons.delete,
-          color: Colors.red,
-        ),
-        onPressed: () async {
-          await DatabaseService.instance.deleteWorkout(workout.id!);
-
-          await loadWorkouts();
-
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Workout deleted successfully",
-              ),
-            ),
-          );
-        },
-      ),
     ),
-  );
-},
+  ),
+);
+                    }
                 ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const AddWorkoutScreen(),
-            ),
-          );
-
-          if (result == true) {
-            loadWorkouts();
-          }
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+  onPressed: () async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AddWorkoutScreen(),
       ),
+    );
+
+    if (result == true) {
+      loadWorkouts();
+    }
+  },
+  icon: const Icon(Icons.add),
+  label: const Text(
+    "Add Workout",
+    style: TextStyle(
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
     );
   }
 }
