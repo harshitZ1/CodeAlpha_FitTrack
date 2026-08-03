@@ -20,6 +20,9 @@ A modern Flutter Fitness Tracker app with Firebase Authentication, SQLite, BMI C
 - 💬 Daily Motivation Quotes
 - 📱 Responsive UI
 - 🎨 Modern Material Design
+- 🚀 Beautiful Splash Screen
+- 📊 Interactive Dashboard
+- 🔥 Daily Workout Tracking
 
 ---
 
@@ -28,10 +31,10 @@ A modern Flutter Fitness Tracker app with Firebase Authentication, SQLite, BMI C
 - Flutter
 - Dart
 - Firebase Authentication
-- SQLite
+- SQLite (sqflite)
 - Shared Preferences
-- Material Design
-
+- Provider
+- Material Design 3
 ---
 
 ## 📂 Project Structure
@@ -54,7 +57,7 @@ lib/
 ### Clone Repository
 
 ```bash
-git clone https://github.com/harshitZ1/FitTrack.git
+git clone https://github.com/harshitZ1/CodeAlpha_FitTrack.git
 ```
 
 ### Install Dependencies
@@ -71,21 +74,33 @@ flutter run
 
 ---
 
-## 📸 Screenshots
+# 📸 App Screenshots
 
-> Add screenshots here after uploading them to GitHub.
+| Splash | Login |
+|--------|-------|
+| <img src="assets/screenshots/splash.png" width="250"> | <img src="assets/screenshots/login.png" width="250"> |
 
-Example:
+| Home | Add Workout |
+|------|-------------|
+| <img src="assets/screenshots/home.png" width="250"> | <img src="assets/screenshots/add_workout.png" width="250"> |
 
-```
-screenshots/
-├── home.png
-├── profile.png
-├── bmi.png
-├── goals.png
-```
+| Workout History | Charts |
+|-----------------|--------|
+| <img src="assets/screenshots/history.png" width="250"> | <img src="assets/screenshots/charts.png" width="250"> |
 
----
+| Goals | BMI |
+|-------|-----|
+| <img src="assets/screenshots/goals.png" width="250"> | <img src="assets/screenshots/bmi.png" width="250"> |
+
+| Profile | Dark Mode |
+|---------|-----------|
+| <img src="assets/screenshots/profile.png" width="250"> | <img src="assets/screenshots/dark_mode.png" width="250"> |
+
+| Settings |
+|----------|
+| <img src="assets/screenshots/settings.png" width="250"> |
+
+--- 
 
 ## ✨ Highlights
 
@@ -106,7 +121,9 @@ screenshots/
 - Sleep Tracker
 - Cloud Backup
 - AI Workout Suggestions
-- Wear OS Support
+- PDF Export
+- Notifications
+- Data Backup
 
 ---
 
