@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'constants/app_colors.dart';
-import 'screens/auth_gate.dart';
 import 'theme/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
