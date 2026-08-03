@@ -90,7 +90,7 @@ flutter run
 
 | Goals | BMI |
 |-------|-----|
-| <img src="assets/screenshots/goals.png" width="250"> | <img src="assets/screenshots/bmi.png" width="250"> |
+| <img src="assets/screenshots/goals.png" width="250"> |<img src="./assets/screenshots/bmi.png" width="250" alt="BMI"> |
 
 | Profile | Dark Mode |
 |---------|-----------|
